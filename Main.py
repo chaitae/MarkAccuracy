@@ -83,8 +83,10 @@ while running:
         elif event.type == pygame.MOUSEBUTTONUP:
             trail_points.append(event.pos)
             drawing = False
+            print(len(trail_points))
+
             # Calculate accuracy
-            if len(trail_points) > 1:
+            if len(trail_points) > 200:
                 distances = [point_line_distance(point, target_start, target_end) for point in trail_points]
                 avg_distance = sum(distances) / len(distances)
                 accuracy = max(0, 100 - avg_distance * 10)  # Increased penalty factor
