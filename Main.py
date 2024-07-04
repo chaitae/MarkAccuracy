@@ -29,14 +29,26 @@ accuracy = 0.0
 accuracy_position = (50, 50)
 
 def generate_target_line():
-    """Generate a new random target line centered in the window."""
-    line_length = 300
+    """Generate a new random target line centered horizontally with a biased length."""
     center_x = width // 2
     center_y = height // 2
-    angle = random.uniform(0, math.pi)  # Random angle in radians (0 to 180 degrees)
+    
+    # Randomly choose the line length with a bias
+    if random.random() < 0.8:  # 80% chance for lengths below 200 pixels
+        line_length = random.randint(100, 200)
+    else:
+        line_length = random.randint(200, 260)
+    
+    # Randomly choose the angle in radians (0 to 2*pi)
+    angle = random.uniform(0, 2*math.pi)
+    
+    # Calculate end points based on the center, length, and angle
     end_x = center_x + line_length * math.cos(angle)
     end_y = center_y + line_length * math.sin(angle)
-    return (center_x, center_y), (end_x, end_y)
+    start_x = center_x - line_length * math.cos(angle)
+    start_y = center_y - line_length * math.sin(angle)
+    
+    return (start_x, start_y), (end_x, end_y), line_length
 
 def point_line_distance(point, start, end):
     """Calculate the distance of a point from a line segment."""
@@ -56,8 +68,8 @@ def point_line_distance(point, start, end):
     closest_point = (x1 + t * lx, y1 + t * ly)
     return math.dist(point, closest_point)
 
-# Initial target line
-target_start, target_end = generate_target_line()
+# Initial target line and length
+target_start, target_end, target_length = generate_target_line()
 
 # Game loop
 running = True
@@ -78,7 +90,7 @@ while running:
                 accuracy = max(0, 100 - avg_distance * 10)  # Increased penalty factor
                 # Check if accuracy is 90% or higher
                 if accuracy >= 85:
-                    target_start, target_end = generate_target_line()
+                    target_start, target_end, target_length = generate_target_line()
                     trail_points = []
                     accuracy = 0.0
         elif event.type == pygame.MOUSEMOTION and drawing:
@@ -98,6 +110,10 @@ while running:
     # Render and display accuracy
     accuracy_text = font.render(f"Accuracy: {accuracy:.2f}%", True, BLUE)
     screen.blit(accuracy_text, accuracy_position)
+    
+    # Render and display target line length
+    length_text = font.render(f"Line Length: {target_length:.2f} pixels", True, BLACK)
+    screen.blit(length_text, (50, height - 50))
     
     # Update display
     pygame.display.flip()
