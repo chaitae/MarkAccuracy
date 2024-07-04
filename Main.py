@@ -1,12 +1,14 @@
-
 import pygame
 import math
+import random
 
 # Initialize Pygame
 pygame.init()
 
 # Screen dimensions
 width, height = 800, 600
+
+# Create Pygame display
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Draw Line Accuracy Game")
 
@@ -14,12 +16,48 @@ pygame.display.set_caption("Draw Line Accuracy Game")
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+
+# Font for displaying text
+font = pygame.font.SysFont(None, 36)
 
 # Game variables
 drawing = False
-start_pos = None
-end_pos = None
-target_length = 100
+trail_points = []
+trail_thickness = 3
+accuracy = 0.0
+accuracy_position = (50, 50)
+
+def generate_target_line():
+    """Generate a new random target line centered in the window."""
+    line_length = 300
+    center_x = width // 2
+    center_y = height // 2
+    angle = random.uniform(0, math.pi)  # Random angle in radians (0 to 180 degrees)
+    end_x = center_x + line_length * math.cos(angle)
+    end_y = center_y + line_length * math.sin(angle)
+    return (center_x, center_y), (end_x, end_y)
+
+def point_line_distance(point, start, end):
+    """Calculate the distance of a point from a line segment."""
+    px, py = point
+    x1, y1 = start
+    x2, y2 = end
+    
+    if x1 == x2 and y1 == y2:
+        return math.dist(point, start)
+    
+    # Line segment vector
+    lx, ly = x2 - x1, y2 - y1
+    # Point vector
+    dx, dy = px - x1, py - y1
+    # Project point onto the line segment, clamped to [0,1]
+    t = max(0, min(1, (dx * lx + dy * ly) / (lx * lx + ly * ly)))
+    closest_point = (x1 + t * lx, y1 + t * ly)
+    return math.dist(point, closest_point)
+
+# Initial target line
+target_start, target_end = generate_target_line()
 
 # Game loop
 running = True
@@ -28,27 +66,39 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            start_pos = event.pos
+            trail_points = [event.pos]
             drawing = True
         elif event.type == pygame.MOUSEBUTTONUP:
-            end_pos = event.pos
+            trail_points.append(event.pos)
             drawing = False
-            if start_pos and end_pos:
-                drawn_length = math.dist(start_pos, end_pos)
-                accuracy = 100 - abs(drawn_length - target_length)
-                print(f"Drawn length: {drawn_length}, Accuracy: {accuracy}%")
-
+            # Calculate accuracy
+            if len(trail_points) > 1:
+                distances = [point_line_distance(point, target_start, target_end) for point in trail_points]
+                avg_distance = sum(distances) / len(distances)
+                accuracy = max(0, 100 - avg_distance * 10)  # Increased penalty factor
+                # Check if accuracy is 90% or higher
+                if accuracy >= 85:
+                    target_start, target_end = generate_target_line()
+                    trail_points = []
+                    accuracy = 0.0
+        elif event.type == pygame.MOUSEMOTION and drawing:
+            trail_points.append(event.pos)
+    
     # Clear screen
     screen.fill(WHITE)
-
+    
     # Draw target line
-    pygame.draw.line(screen, RED, (50, height//2), (50 + target_length, height//2), 2)
-
-    # Draw user line
-    if drawing and start_pos:
-        end_pos = pygame.mouse.get_pos()
-        pygame.draw.line(screen, BLACK, start_pos, end_pos, 2)
-
+    pygame.draw.line(screen, RED, target_start, target_end, 2)
+    
+    # Draw the trail smoothly
+    if trail_points:
+        for i in range(len(trail_points) - 1):
+            pygame.draw.line(screen, BLACK, trail_points[i], trail_points[i + 1], trail_thickness)
+    
+    # Render and display accuracy
+    accuracy_text = font.render(f"Accuracy: {accuracy:.2f}%", True, BLUE)
+    screen.blit(accuracy_text, accuracy_position)
+    
     # Update display
     pygame.display.flip()
 
